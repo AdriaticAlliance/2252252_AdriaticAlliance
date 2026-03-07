@@ -15,6 +15,9 @@ function evaluate(value, operator, threshold) {
   }
 }
 
+// Deduplication: track last triggered state per rule to avoid spamming
+const lastTriggered = new Map(); // key: ruleId → last target_state triggered
+
 // Main entry — called for every normalized event
 async function evaluateEvent(event) {
   const { sensor_id, metric, value } = event;
@@ -27,6 +30,10 @@ async function evaluateEvent(event) {
     const conditionMet = evaluate(value, rule.operator, rule.threshold);
 
     if (conditionMet) {
+      // Skip if we already triggered this exact state for this rule
+      const lastState = lastTriggered.get(rule.id);
+      if (lastState === rule.target_state) continue;
+
       console.log(
         `[Evaluator] Rule #${rule.id} matched: ` +
         `${sensor_id}/${metric} ${rule.operator} ${rule.threshold} → ` +
@@ -34,7 +41,10 @@ async function evaluateEvent(event) {
       );
 
       try {
-        await actuatorService.callSimulator(rule.actuator, rule.target_state);
+        await actuatorService.callSimulator(rule.actuator, rule.target_state, {
+          trigger_type: 'rule',
+          rule_id: rule.id,
+        });
 
         actuatorService.writeLog({
           actuator:     rule.actuator,
@@ -45,9 +55,14 @@ async function evaluateEvent(event) {
           metric:       metric,
           sensor_value: value,
         });
+
+        lastTriggered.set(rule.id, rule.target_state);
       } catch (err) {
         console.error(`[Evaluator] Failed to trigger actuator for rule #${rule.id}:`, err.message);
       }
+    } else {
+      // Condition no longer met — reset so it can fire again if value crosses threshold
+      lastTriggered.delete(rule.id);
     }
   }
 }

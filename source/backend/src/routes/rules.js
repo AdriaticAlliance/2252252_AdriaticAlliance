@@ -166,13 +166,23 @@ router.put('/:id', (req, res) => {
  * /rules/{id}/toggle:
  *   patch:
  *     tags: [Rules]
- *     summary: Toggle a rule's enabled/disabled state
+ *     summary: Toggle or explicitly set a rule's enabled state
+ *     description: "Without a body, flips the enabled flag. With an enabled property in the body, sets it explicitly."
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: integer
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               enabled:
+ *                 type: boolean
  *     responses:
  *       200:
  *         description: Rule with updated enabled flag
@@ -181,7 +191,10 @@ router.put('/:id', (req, res) => {
  */
 router.patch('/:id/toggle', (req, res) => {
   try {
-    const result = ruleService.toggle(req.params.id);
+    const explicitEnabled = req.body && typeof req.body.enabled === 'boolean'
+      ? req.body.enabled
+      : undefined;
+    const result = ruleService.toggle(req.params.id, explicitEnabled);
     if (!result) return res.status(404).json({ error: `Rule ${req.params.id} not found` });
     res.json(result);
   } catch (err) {

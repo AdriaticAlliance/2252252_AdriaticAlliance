@@ -34,8 +34,12 @@ function create({ sensor_id, metric, operator, threshold, unit = '', actuator, t
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [sensor_id, metric, operator, threshold, unit, actuator, target_state]
   );
+  // Get the ID BEFORE save() — save() exports/reimports the DB which can reset cursor state
+  const stmt = db.prepare('SELECT last_insert_rowid() AS id');
+  stmt.step();
+  const lastId = stmt.getAsObject().id;
+  stmt.free();
   save();
-  const lastId = db.exec('SELECT last_insert_rowid() AS id')[0].values[0][0];
   return queryOne('SELECT * FROM rules WHERE id = ?', [lastId]);
 }
 
@@ -52,10 +56,12 @@ function update(id, { sensor_id, metric, operator, threshold, unit = '', actuato
   return queryOne('SELECT * FROM rules WHERE id = ?', [Number(id)]);
 }
 
-function toggle(id) {
+function toggle(id, explicitEnabled) {
   const rule = findById(id);
   if (!rule) return null;
-  const newEnabled = rule.enabled ? 0 : 1;
+  const newEnabled = explicitEnabled !== undefined
+    ? (explicitEnabled ? 1 : 0)
+    : (rule.enabled ? 0 : 1);
   const db = getDb();
   db.run(
     `UPDATE rules SET enabled=?, updated_at=strftime('%Y-%m-%dT%H:%M:%SZ','now') WHERE id=?`,

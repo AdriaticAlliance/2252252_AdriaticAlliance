@@ -95,7 +95,7 @@ async function main() {
   runMigrations();
 
   // 2. Connect Kafka consumers (retry loop)
-  let retries = 3;
+  let retries = 15;
   while (retries > 0) {
     try {
       await startConsumer();

@@ -1,10 +1,11 @@
 const { getDb, save } = require('../db/database');
 const config = require('../config');
 const fetch  = require('node-fetch');
+const wsServer = require('../ws/wsServer');
 
 // ─── Simulator proxy ─────────────────────────────────────────────────────────
 
-async function callSimulator(actuatorName, state) {
+async function callSimulator(actuatorName, state, context = {}) {
   const res = await fetch(
     `${config.SIMULATOR_URL}/api/actuators/${actuatorName}`,
     {
@@ -14,7 +15,21 @@ async function callSimulator(actuatorName, state) {
     }
   );
   if (!res.ok) throw new Error(`Simulator returned ${res.status}`);
-  return res.json();
+  const data = await res.json();
+
+  // Broadcast actuator state change to all WebSocket clients
+  wsServer.broadcast({
+    type: 'actuator_update',
+    payload: {
+      actuator:     actuatorName,
+      state:        state,
+      trigger_type: context.trigger_type || 'unknown',
+      rule_id:      context.rule_id || null,
+      timestamp:    new Date().toISOString(),
+    },
+  });
+
+  return data;
 }
 
 async function getSimulatorStates() {
@@ -51,7 +66,7 @@ function getLogs(limit = 100, offset = 0) {
 // ─── Manual toggle ────────────────────────────────────────────────────────────
 
 async function manualToggle(name, state) {
-  const result = await callSimulator(name, state);
+  const result = await callSimulator(name, state, { trigger_type: 'manual' });
   writeLog({ actuator: name, new_state: state, trigger_type: 'manual' });
   return result;
 }
