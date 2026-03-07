@@ -1,91 +1,139 @@
 const express = require('express');
 const router  = express.Router();
-const { getDb, save } = require('../db/database');
+const actuatorService = require('../services/actuatorService');
 const config  = require('../config');
-const fetch   = require('node-fetch');
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-async function callSimulator(actuatorName, state) {
-  const res = await fetch(
-    `${config.SIMULATOR_URL}/api/actuators/${actuatorName}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ state }),
-    }
-  );
-  if (!res.ok) throw new Error(`Simulator returned ${res.status}`);
-  return res.json();
-}
-
-function writeLog({ actuator, new_state, trigger_type, rule_id = null, sensor_id = null, metric = null, sensor_value = null }) {
-  const db = getDb();
-  db.run(
-    `INSERT INTO actuator_logs
-       (actuator, new_state, trigger_type, rule_id, sensor_id, metric, sensor_value)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [actuator, new_state, trigger_type, rule_id, sensor_id, metric, sensor_value]
-  );
-  save();
-}
-
-function queryAll(sql, params = []) {
-  const db = getDb();
-  const stmt = db.prepare(sql);
-  if (params.length) stmt.bind(params);
-  const rows = [];
-  while (stmt.step()) rows.push(stmt.getAsObject());
-  stmt.free();
-  return rows;
-}
-
-// ─── Routes ──────────────────────────────────────────────────────────────────
-
-// GET /actuators — list current states from simulator
+/**
+ * @openapi
+ * /actuators:
+ *   get:
+ *     tags: [Actuators]
+ *     summary: Get current actuator states from simulator
+ *     responses:
+ *       200:
+ *         description: Map of actuator names to ON/OFF states
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 actuators:
+ *                   type: object
+ *                   additionalProperties:
+ *                     type: string
+ *                     enum: [ON, OFF]
+ *       502:
+ *         description: Simulator unreachable
+ */
 router.get('/', async (req, res) => {
   try {
-    const r = await fetch(`${config.SIMULATOR_URL}/api/actuators`);
-    const data = await r.json();
+    const data = await actuatorService.getSimulatorStates();
     res.json(data);
   } catch (err) {
     res.status(502).json({ error: 'Cannot reach simulator', detail: err.message });
   }
 });
 
-// GET /actuators/logs — audit log (must be BEFORE /:name)
+/**
+ * @openapi
+ * /actuators/logs:
+ *   get:
+ *     tags: [Actuators]
+ *     summary: Get actuator audit log
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 100
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *     responses:
+ *       200:
+ *         description: Audit log entries
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/ActuatorLog'
+ *                 count:
+ *                   type: integer
+ *                 limit:
+ *                   type: integer
+ *                 offset:
+ *                   type: integer
+ */
 router.get('/logs', (req, res) => {
   try {
     const limit  = Math.min(parseInt(req.query.limit || '100'), 500);
     const offset = parseInt(req.query.offset || '0');
-    const logs   = queryAll(
-      'SELECT * FROM actuator_logs ORDER BY timestamp DESC LIMIT ? OFFSET ?',
-      [limit, offset]
-    );
+    const logs   = actuatorService.getLogs(limit, offset);
     res.json({ data: logs, count: logs.length, limit, offset });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// POST /actuators/:name — manual toggle
+/**
+ * @openapi
+ * /actuators/{name}:
+ *   post:
+ *     tags: [Actuators]
+ *     summary: Manually set an actuator state
+ *     parameters:
+ *       - in: path
+ *         name: name
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [cooling_fan, entrance_humidifier, hall_ventilation, habitat_heater]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [state]
+ *             properties:
+ *               state:
+ *                 type: string
+ *                 enum: [ON, OFF]
+ *     responses:
+ *       200:
+ *         description: Actuator state updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ActuatorResponse'
+ *       400:
+ *         description: Invalid state
+ *       404:
+ *         description: Unknown actuator
+ *       502:
+ *         description: Simulator unreachable
+ */
 router.post('/:name', async (req, res) => {
   const { name } = req.params;
   const { state } = req.body;
 
   if (!config.KNOWN_ACTUATORS.includes(name))
     return res.status(404).json({ error: `Unknown actuator: ${name}` });
-
   if (!['ON', 'OFF'].includes(state))
     return res.status(400).json({ error: 'state must be "ON" or "OFF"' });
 
   try {
-    const result = await callSimulator(name, state);
-    writeLog({ actuator: name, new_state: state, trigger_type: 'manual' });
+    const result = await actuatorService.manualToggle(name, state);
     res.json(result);
   } catch (err) {
     res.status(502).json({ error: 'Simulator call failed', detail: err.message });
   }
 });
 
-module.exports = { router, callSimulator, writeLog };
+module.exports = router;

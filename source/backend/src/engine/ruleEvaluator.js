@@ -1,5 +1,5 @@
-const { getDb } = require('../db/database');
-const { callSimulator, writeLog } = require('../routes/actuators');
+const ruleService = require('../services/ruleService');
+const actuatorService = require('../services/actuatorService');
 
 // Pure function — no side effects, easy to unit test
 function evaluate(value, operator, threshold) {
@@ -15,25 +15,12 @@ function evaluate(value, operator, threshold) {
   }
 }
 
-// Load matching enabled rules from DB
-function getMatchingRules(sensorId, metric) {
-  const db = getDb();
-  const stmt = db.prepare(
-    'SELECT * FROM rules WHERE enabled = 1 AND sensor_id = ? AND metric = ?'
-  );
-  stmt.bind([sensorId, metric]);
-  const rows = [];
-  while (stmt.step()) rows.push(stmt.getAsObject());
-  stmt.free();
-  return rows;
-}
-
 // Main entry — called for every normalized event
 async function evaluateEvent(event) {
   const { sensor_id, metric, value } = event;
   if (value === undefined || value === null) return;
 
-  const rules = getMatchingRules(sensor_id, metric);
+  const rules = ruleService.findEnabledByEvent(sensor_id, metric);
   if (rules.length === 0) return;
 
   for (const rule of rules) {
@@ -47,9 +34,9 @@ async function evaluateEvent(event) {
       );
 
       try {
-        await callSimulator(rule.actuator, rule.target_state);
+        await actuatorService.callSimulator(rule.actuator, rule.target_state);
 
-        writeLog({
+        actuatorService.writeLog({
           actuator:     rule.actuator,
           new_state:    rule.target_state,
           trigger_type: 'rule',

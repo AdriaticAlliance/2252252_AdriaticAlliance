@@ -2,16 +2,19 @@ require('dotenv').config();
 const http    = require('http');
 const express = require('express');
 const cors    = require('cors');
+const swaggerUi = require('swagger-ui-express');
 
 const config             = require('./config');
+const swaggerSpec        = require('./swagger');
 const { initDatabase }   = require('./db/database');
 const { runMigrations }  = require('./db/migrations');
 const wsServer           = require('./ws/wsServer');
 const { startConsumer }  = require('./kafka/consumer');
 const { startWarningConsumer } = require('./kafka/warningConsumer');
+const sensorService      = require('./services/sensorService');
 
 const rulesRouter     = require('./routes/rules');
-const { router: actuatorsRouter } = require('./routes/actuators');
+const actuatorsRouter = require('./routes/actuators');
 const sensorsRouter   = require('./routes/sensors');
 
 // ── Express app ───────────────────────────────────────────────────────────────
@@ -19,18 +22,44 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Health check
+// ── OpenAPI / Swagger UI ──────────────────────────────────────────────────────
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'Mars IoT — Rules Service API',
+}));
+app.get('/openapi.json', (req, res) => res.json(swaggerSpec));
+
+// ── System routes ─────────────────────────────────────────────────────────────
+
+/**
+ * @openapi
+ * /health:
+ *   get:
+ *     tags: [System]
+ *     summary: Service health check
+ *     responses:
+ *       200:
+ *         description: Health status
+ */
 app.get('/health', (req, res) => {
-  const sensorCache = require('./state/sensorCache');
   res.json({
     status: 'ok',
     service: 'rules-service',
-    cached_sensors: sensorCache.size(),
+    cached_sensors: sensorService.getCacheSize(),
     uptime_s: Math.floor(process.uptime()),
   });
 });
 
-// Expose known sensors/actuators (useful for Student C's dropdowns)
+/**
+ * @openapi
+ * /meta:
+ *   get:
+ *     tags: [System]
+ *     summary: List known sensors, actuators, and valid operators
+ *     responses:
+ *       200:
+ *         description: Metadata for frontend dropdowns
+ */
 app.get('/meta', (req, res) => {
   res.json({
     known_sensors:   config.KNOWN_SENSORS,
@@ -39,6 +68,7 @@ app.get('/meta', (req, res) => {
   });
 });
 
+// ── Domain routes ─────────────────────────────────────────────────────────────
 app.use('/rules',     rulesRouter);
 app.use('/actuators', actuatorsRouter);
 app.use('/sensors',   sensorsRouter);
@@ -64,7 +94,7 @@ async function main() {
   await initDatabase();
   runMigrations();
 
-  // 2. Connect Kafka consumers (retry loop in case Kafka isn't ready yet)
+  // 2. Connect Kafka consumers (retry loop)
   let retries = 3;
   while (retries > 0) {
     try {
@@ -84,6 +114,8 @@ async function main() {
   // 3. Start HTTP + WS server
   server.listen(config.PORT, () => {
     console.log(`[rules-service] HTTP + WS listening on port ${config.PORT}`);
+    console.log(`[rules-service] Swagger UI: http://localhost:${config.PORT}/docs`);
+    console.log(`[rules-service] OpenAPI JSON: http://localhost:${config.PORT}/openapi.json`);
     console.log(`[rules-service] Simulator target: ${config.SIMULATOR_URL}`);
   });
 }
