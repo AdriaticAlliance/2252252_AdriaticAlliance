@@ -1,0 +1,94 @@
+
+version: "3.9"
+
+services:
+  # Apache Kafka broker used as the message backbone for downstream components.
+  kafka:
+    image: bitnami/kafka:3.7
+    container_name: mars-kafka
+    environment:
+      - KAFKA_ENABLE_KRAFT=yes
+      - KAFKA_CFG_NODE_ID=1
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    ports:
+      # Expose Kafka for local development and for non-containerised consumers.
+      - "9092:9092"
+    healthcheck:
+      test: ["CMD", "bash", "-c", "kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 15
+    networks:
+      - mars-net
+
+  # Gate component: talks to the simulator and forwards raw data to the
+  # interpreter (no direct Kafka access).
+  ingestion-gate:
+    build:
+      context: ./ingestion-service/gate
+      dockerfile: Dockerfile
+    container_name: mars-ingestion-gate
+    depends_on:
+      - ingestion-interpreter
+    environment:
+      - NODE_ENV=production
+
+      # Simulator configuration
+      # By default, talk to the simulator running on the host at http://localhost:8080.
+      # Override this if the simulator is containerised.
+      - SIMULATOR_BASE_URL=http://host.docker.internal:8080
+
+      # Interpreter connectivity (gate sends raw data to this service).
+      - INTERPRETER_BASE_URL=http://ingestion-interpreter:3002
+
+      # Optional polling configuration.
+      - SENSOR_POLL_INTERVAL_MS=5000
+    ports:
+      # Optional: expose an HTTP port (health/metrics) for the gate.
+      - "3001:3001"
+    networks:
+      - mars-net
+
+  # Interpreter component: consumes raw topics, converts to the common
+  # data record format and republishes on a normalised topic.
+  ingestion-interpreter:
+    build:
+      context: ./ingestion-service/interpreter
+      dockerfile: Dockerfile
+    container_name: mars-ingestion-interpreter
+    depends_on:
+      - kafka
+    environment:
+      - NODE_ENV=production
+
+      # Kafka connectivity
+      - KAFKA_BROKER=kafka:9092
+      - KAFKA_CLIENT_ID=mars-interpreter
+
+      # Topics consumed from the gate and produced for downstream services.
+      - KAFKA_TOPIC_SENSORS_RAW=simulator.sensors.raw
+      - KAFKA_TOPIC_TELEMETRY_RAW=simulator.telemetry.raw
+      - KAFKA_TOPIC_COMMON=mars.common-data-records
+
+      # Path to the common JSON schema used to validate/shape outbound records.
+      - COMMON_SCHEMA_PATH=/app/config/common-data-record.schema.json
+    ports:
+      # Optional: expose an HTTP port (health/metrics) for the interpreter.
+      - "3002:3002"
+    volumes:
+      # Mount the common data model defined at ../input.md into the container.
+      # The file content is JSON, even though the extension is .md.
+      - ../input.md:/app/config/common-data-record.schema.json:ro
+    networks:
+      - mars-net
+
+networks:
+  mars-net:
+    driver: bridge
+
