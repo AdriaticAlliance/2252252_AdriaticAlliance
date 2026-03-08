@@ -54,7 +54,7 @@ services:
 
       # Optional polling configuration and telemetry topics.
       - SENSOR_POLL_INTERVAL_MS=5000
-      - TELEMETRY_TOPICS=environment
+      - TELEMETRY_TOPICS=mars/telemetry/airlock,mars/telemetry/life_support,mars/telemetry/power_bus,mars/telemetry/power_consumption,mars/telemetry/radiation,mars/telemetry/solar_array,mars/telemetry/thermal_loop
     ports:
       # Optional: expose an HTTP port (health/metrics) for the gate.
       - "3001:3001"

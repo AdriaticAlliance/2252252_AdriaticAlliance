@@ -182,7 +182,8 @@ function startTelemetryWebSockets() {
         data: parsed,
       };
 
-      const topic = buildInterpretTopic('telemetry', topicName);
+      const topicSuffix = topicName.split('/').pop();
+      const topic = buildInterpretTopic('telemetry', topicSuffix);
       try {
         await producer.send({
           topic,
