@@ -42,4 +42,4 @@ function normalize(sensorId, sourceType, rawPayload) {
   }
 }
 
-module.exports = { normalize };
+module.exports = { normalize, SCHEMA_MAP };

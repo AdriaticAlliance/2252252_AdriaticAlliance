@@ -11,7 +11,7 @@
     },
     "source_type": {
       "type": "string",
-      "enum": ["sensor", "telemetry"]
+      "enum": ["rest", "telemetry"]
     },
     "metric": {
       "type": "string",

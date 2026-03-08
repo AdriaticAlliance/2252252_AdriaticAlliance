@@ -1,27 +1,36 @@
-const fetch    = require('node-fetch');
-const config   = require('./config');
-const { forward } = require('./forwarder');
+const fetch = require('node-fetch');
 
-async function pollOnce(sensorId) {
+const REST_SENSORS = [
+  'greenhouse_temperature', 'entrance_humidity', 'co2_hall',
+  'corridor_pressure',      'hydroponic_ph',     'water_tank_level',
+  'air_quality_pm25',       'air_quality_voc',
+];
+
+const PORT = process.env.PORT || 3001;
+
+// Call the Gate's own REST endpoint (keeps the architecture intact)
+async function triggerPoll(sensorName) {
   try {
-    const res = await fetch(`${config.SIMULATOR_URL}/api/sensors/${sensorId}`);
+    const res = await fetch(
+      `http://localhost:${PORT}/sensors/${encodeURIComponent(sensorName)}`
+    );
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const raw = await res.json();
-    await forward('rest', sensorId, raw);
   } catch (err) {
-    console.error(`[Poller] Failed to poll ${sensorId}:`, err.message);
+    console.error(`[AutoPoller] Failed to trigger poll for ${sensorName}:`, err.message);
   }
 }
 
-function startPolling() {
-  console.log(`[Poller] Polling ${config.REST_SENSORS.length} sensors every ${config.POLL_INTERVAL_MS}ms`);
+function startAutoPolling() {
+  const INTERVAL = parseInt(process.env.SENSOR_POLL_INTERVAL_MS || '5000');
+  console.log(`[AutoPoller] Starting autonomous polling every ${INTERVAL}ms`);
 
-  setInterval(async () => {
-    await Promise.all(config.REST_SENSORS.map(id => pollOnce(id)));
-  }, config.POLL_INTERVAL_MS);
+  // Poll immediately on startup
+  REST_SENSORS.forEach(s => triggerPoll(s));
 
-  // Also poll immediately on startup
-  Promise.all(config.REST_SENSORS.map(id => pollOnce(id)));
+  // Then poll on interval
+  setInterval(() => {
+    REST_SENSORS.forEach(s => triggerPoll(s));
+  }, INTERVAL);
 }
 
-module.exports = { startPolling };
+module.exports = { startAutoPolling };

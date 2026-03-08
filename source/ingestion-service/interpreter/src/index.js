@@ -8,9 +8,47 @@
 
 const fs = require('fs');
 const path = require('path');
+const express = require('express');
 const { Kafka } = require('kafkajs');
-const Ajv = require('ajv');
+const Ajv = require('ajv/dist/2020');
 const { normalize } = require('./normalizers');
+
+const app = express();
+app.use(express.json());
+
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', service: 'ingestion-interpreter' });
+});
+
+app.post('/ingest', async (req, res) => {
+  try {
+    const payload = req.body;
+    const sensorId = payload.sensor_id;
+    // determine kind from payload if missing
+    const isTelemetry = sensorId.startsWith('mars/telemetry/');
+    const topicKind = isTelemetry ? 'telemetry' : 'sensor';
+    const sourceType = isTelemetry ? 'telemetry' : 'rest';
+    const topicName = isTelemetry ? sensorId.split('/').pop() : sensorId;
+    const topic = `interpret_${topicKind}_${topicName}`;
+    
+    const rawPayload = payload.payload ? payload.payload : payload;
+    const events = normalize(sensorId, sourceType, rawPayload);
+    
+    if (events.length === 0) return res.status(400).json({ status: "error", message: "no valid events" });
+    
+    const validEvents = events.filter(record => validateCommonFormat(record));
+    if (validEvents.length === 0) return res.status(400).json({ status: "error", message: "validation failed" });
+
+    await producer.send({
+      topic: 'mars.common-data-records',
+      messages: validEvents.map(e => ({ value: JSON.stringify(e) })),
+    });
+
+    res.json({ published: validEvents.length, sensor_id: sensorId });
+  } catch (err) {
+    res.status(500).json({ status: "error", message: err.message });
+  }
+});
 
 const KAFKA_BROKER = process.env.KAFKA_BROKER || 'kafka:9092';
 const KAFKA_CLIENT_ID = process.env.KAFKA_CLIENT_ID || 'mars-interpreter';
@@ -22,6 +60,7 @@ const schemaRaw = fs.readFileSync(COMMON_SCHEMA_PATH, 'utf-8');
 const commonSchema = JSON.parse(schemaRaw);
 const ajv = new Ajv({ allErrors: true, strict: false });
 const validateCommonFormat = ajv.compile(commonSchema);
+const { SCHEMA_MAP } = require('./normalizers/index');
 
 const kafka = new Kafka({
   clientId: KAFKA_CLIENT_ID,
@@ -34,6 +73,7 @@ const consumer = kafka.consumer({
   allowAutoTopicCreation: true,
 });
 const producer = kafka.producer();
+const admin = kafka.admin();
 
 // Utility: build topic names
 function interpretTopic(kind, name) {
@@ -48,15 +88,16 @@ function broadcastTopic(kind, name) {
 async function dispatch(topic, message) {
   try {
     // topic format: interpret_<kind>_<name>
-    const [, kind, ...rest] = topic.split('_');
+    const [, topicKind, ...rest] = topic.split('_');
     const dataName = rest.join('_');
     
     // Convert topic back to canonical sensor_id for mapping
-    const sensorId = kind === 'telemetry' ? `mars/telemetry/${dataName}` : dataName;
+    const sensorId = topicKind === 'telemetry' ? `mars/telemetry/${dataName}` : dataName;
     const rawPayload = message.data || message;
     
+    const sourceType = topicKind === 'telemetry' ? 'telemetry' : 'rest';
     // Normalize nested data into common data records array
-    const events = normalize(sensorId, kind, rawPayload);
+    const events = normalize(sensorId, sourceType, rawPayload);
     
     if (events.length === 0) return false;
 
@@ -82,17 +123,42 @@ async function dispatch(topic, message) {
 
 async function start() {
   await producer.connect();
+  
+  const knownTopics = Object.keys(require('./normalizers/index').SCHEMA_MAP || {}).map(sensorId => {
+    return sensorId.startsWith('mars/telemetry/') 
+      ? `interpret_telemetry_${sensorId.split('/').pop()}`
+      : `interpret_sensor_${sensorId}`;
+  });
+  
+  // Also include the generic ones if they pop up
+  knownTopics.push('simulator.sensors.raw', 'simulator.telemetry.raw');
+  
+  await admin.connect();
+  const existingTopics = await admin.listTopics();
+  
+  const toCreate = knownTopics
+    .filter(t => !existingTopics.includes(t))
+    .map(t => ({ topic: t, numPartitions: 1, replicationFactor: 1 }));
+    
+  if (toCreate.length > 0) {
+    await admin.createTopics({ topics: toCreate, waitForLeaders: true });
+    console.log(`[Interpreter] Pre-created ${toCreate.length} topics`);
+  } else {
+    console.log('[Interpreter] All topics already exist');
+  }
+  await admin.disconnect();
+
   await consumer.connect();
 
-  // Subscribe to all interpret_* topics
-  // fromBeginning: true ensures we process messages already in Kafka
-  await consumer.subscribe({ topic: /^interpret_.+/, fromBeginning: true });
+  // Subscribe to all explicit topics
+  await consumer.subscribe({ topics: knownTopics, fromBeginning: true });
 
   await consumer.run({
     // Disable auto-commit - we'll commit manually only after successful translation
     autoCommit: false,
     eachMessage: async ({ topic, partition, message }) => {
       try {
+        console.log(`[Interpreter] Received message on topic ${topic}`);
         const payloadStr = message.value?.toString() || '{}';
         const payload = JSON.parse(payloadStr);
         
@@ -120,6 +186,9 @@ async function start() {
   });
 
   console.log('Mars ingestion interpreter started, listening to interpret_* topics');
+  
+  const PORT = process.env.PORT || 3002;
+  app.listen(PORT, () => console.log(`Interpreter Express listening on port ${PORT}`));
 }
 
 start().catch((err) => {

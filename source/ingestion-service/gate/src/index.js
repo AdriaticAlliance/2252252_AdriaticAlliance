@@ -11,6 +11,7 @@ const express = require('express');
 const axios = require('axios');
 const WebSocket = require('ws');
 const { Kafka } = require('kafkajs');
+const { startAutoPolling } = require('./poller');
 
 const SIMULATOR_BASE_URL = process.env.SIMULATOR_BASE_URL || 'http://localhost:8080';
 const TELEMETRY_TOPICS = (process.env.TELEMETRY_TOPICS || '').split(',').map(t => t.trim()).filter(Boolean);
@@ -62,6 +63,7 @@ async function pollSensor(sensorName, reason = 'api') {
       topic,
       messages: [{ value: JSON.stringify(payload) }],
     });
+    console.log(`[Gate] Forwarded ${sensorName} to interpreter`);
 
     return true;
   } catch (err) {
@@ -85,9 +87,29 @@ app.get('/sensors/:sensorName', async (req, res) => {
   }
 });
 
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', service: 'ingestion-gate' });
+});
+
 async function startKafka() {
-  await producer.connect();
-  await consumer.connect();
+  let retries = 15;
+  let connected = false;
+  
+  while (retries > 0 && !connected) {
+    try {
+      await producer.connect();
+      await consumer.connect();
+      connected = true;
+    } catch (err) {
+      retries--;
+      console.warn(`[Producer/Consumer] Kafka not ready, retrying... (${retries} left)`);
+      await new Promise(r => setTimeout(r, 4000));
+    }
+  }
+  
+  if (!connected) {
+    throw new Error('Could not connect to Kafka after retries');
+  }
 
   // Subscribe to all poll_sensor_* topics; fromBeginning: true to process existing messages
   await consumer.subscribe({ topic: /^poll_sensor_.+/, fromBeginning: true });
@@ -194,6 +216,9 @@ async function start() {
   }
 
   startTelemetryWebSockets();
+  
+  // Start autonomous polling
+  startAutoPolling();
 }
 
 start().catch((err) => {
