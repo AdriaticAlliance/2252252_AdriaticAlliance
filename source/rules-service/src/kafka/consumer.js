@@ -38,6 +38,11 @@ async function startConsumer() {
 
       // 3. Push to all connected WebSocket clients
       wsServer.broadcast({ type: 'sensor_update', payload: event });
+
+      // 4. If warning, also broadcast a dedicated warning message
+      if (event.status === 'warning') {
+        wsServer.broadcast({ type: 'warning', payload: event });
+      }
     },
   });
 

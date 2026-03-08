@@ -10,7 +10,6 @@ const { initDatabase }   = require('./db/database');
 const { runMigrations }  = require('./db/migrations');
 const wsServer           = require('./ws/wsServer');
 const { startConsumer }  = require('./kafka/consumer');
-const { startWarningConsumer } = require('./kafka/warningConsumer');
 const sensorService      = require('./services/sensorService');
 
 const rulesRouter     = require('./routes/rules');
@@ -99,7 +98,6 @@ async function main() {
   while (retries > 0) {
     try {
       await startConsumer();
-      await startWarningConsumer();
       break;
     } catch (err) {
       retries--;
