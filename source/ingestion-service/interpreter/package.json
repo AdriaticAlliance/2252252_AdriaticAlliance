@@ -1,15 +1,18 @@
 {
-  "name": "ingestion-interpreter",
+  "name": "mars-ingestion-interpreter",
   "version": "1.0.0",
-  "engines": { "node": ">=20" },
+  "description": "Interpreter service for MarsOperations ingestion: subscribes to interpret_* topics, translates to common format, and emits broadcast_* topics.",
+  "main": "src/index.js",
   "scripts": {
-    "start:interpreter": "node src/index.js",
-    "dev": "nodemon src/index.js"
+    "start": "node src/index.js",
+    "start:interpreter": "node src/index.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   },
   "dependencies": {
-    "express":    "^4.21.2",
-    "kafkajs":    "^2.2.4",
-    "dotenv":     "^16.4.7",
-    "nodemon":    "^3.1.9"
+    "ajv": "^8.17.0",
+    "kafkajs": "^2.2.4"
   }
 }
+

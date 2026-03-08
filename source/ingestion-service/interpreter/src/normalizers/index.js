@@ -1,3 +1,22 @@
+// Sensor → schema family mapping (from SCHEMA_CONTRACT.md)
+const SCHEMA_MAP = {
+  greenhouse_temperature: 'scalar',
+  entrance_humidity:      'scalar',
+  co2_hall:               'scalar',
+  corridor_pressure:      'scalar',
+  hydroponic_ph:          'chemistry',
+  water_tank_level:       'level',
+  air_quality_pm25:       'particulate',
+  air_quality_voc:       'chemistry',
+  'mars/telemetry/solar_array':       'power',
+  'mars/telemetry/power_bus':         'power',
+  'mars/telemetry/power_consumption': 'power',
+  'mars/telemetry/radiation':         'environment',
+  'mars/telemetry/life_support':      'environment',
+  'mars/telemetry/thermal_loop':      'thermalLoop',
+  'mars/telemetry/airlock':           'airlock',
+};
+
 const normalizers = {
   scalar:      require('./scalar'),
   chemistry:   require('./chemistry'),
@@ -9,20 +28,18 @@ const normalizers = {
   airlock:     require('./airlock'),
 };
 
-const config = require('../config');
-
 function normalize(sensorId, sourceType, rawPayload) {
-  const family = config.SENSOR_SCHEMA_MAP[sensorId];
-  if (!family) {
-    console.warn(`[Normalizer] Unknown sensor_id: ${sensorId} — skipping`);
+  const family = SCHEMA_MAP[sensorId];
+  if (!family || !normalizers[family]) {
+    console.warn(`[Normalizer] Unknown sensor: ${sensorId} — skipping`);
     return [];
   }
-  const fn = normalizers[family];
-  if (!fn) {
-    console.warn(`[Normalizer] No normalizer for family: ${family} — skipping`);
+  try {
+    return normalizers[family](sensorId, sourceType, rawPayload);
+  } catch (err) {
+    console.error(`[Normalizer] Failed to normalize ${sensorId}:`, err.message);
     return [];
   }
-  return fn(sensorId, sourceType, rawPayload);
 }
 
 module.exports = { normalize };
