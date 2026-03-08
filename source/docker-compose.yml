@@ -28,14 +28,14 @@ services:
       - mars-net
 
   # Gate component: talks to the simulator and forwards raw data to the
-  # interpreter (no direct Kafka access).
+  # interpreter via Kafka.
   ingestion-gate:
     build:
       context: ./ingestion-service/gate
       dockerfile: Dockerfile
     container_name: mars-ingestion-gate
     depends_on:
-      - ingestion-interpreter
+      - kafka
     environment:
       - NODE_ENV=production
 
@@ -44,11 +44,13 @@ services:
       # Override this if the simulator is containerised.
       - SIMULATOR_BASE_URL=http://host.docker.internal:8080
 
-      # Interpreter connectivity (gate sends raw data to this service).
-      - INTERPRETER_BASE_URL=http://ingestion-interpreter:3002
+      # Kafka connectivity (gate produces interpret_* and consumes poll_sensor_*).
+      - KAFKA_BROKER=kafka:9092
+      - KAFKA_CLIENT_ID=mars-gate
 
-      # Optional polling configuration.
+      # Optional polling configuration and telemetry topics.
       - SENSOR_POLL_INTERVAL_MS=5000
+      - TELEMETRY_TOPICS=environment
     ports:
       # Optional: expose an HTTP port (health/metrics) for the gate.
       - "3001:3001"

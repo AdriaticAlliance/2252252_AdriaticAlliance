@@ -1,15 +1,20 @@
 {
   "name": "mars-ingestion-gate",
   "version": "1.0.0",
-  "lockfileVersion": 3,
-  "requires": true,
-  "packages": {
-    "": {
-      "name": "mars-ingestion-gate",
-      "version": "1.0.0",
-      "engines": {
-        "node": ">=20.0.0"
-      }
-    }
+  "description": "Gate service for MarsOperations ingestion: talks to simulator, streams telemetry, and coordinates with interpreter via Kafka.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "start:gate": "node src/index.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "axios": "^1.7.0",
+    "express": "^4.19.0",
+    "kafkajs": "^2.2.4",
+    "ws": "^8.16.0"
   }
 }
+
