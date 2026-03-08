@@ -1,7 +1,7 @@
 require('dotenv').config();
 const { Kafka } = require('kafkajs');
 
-const kafka    = new Kafka({ clientId: 'mock-producer', brokers: [process.env.KAFKA_BROKER || 'localhost:29092'] });
+const kafka    = new Kafka({ clientId: 'mock-producer', brokers: [process.env.KAFKA_BROKER || 'localhost:9092'] });
 const producer = kafka.producer();
 
 // These match the normalized event schema Student A will produce.
@@ -111,14 +111,14 @@ async function run() {
 
     // Always publish to normalized
     await producer.send({
-      topic: 'mars.events.normalized',
+      topic: 'mars.common-data-records',
       messages: [{ value: JSON.stringify(event) }],
     });
 
     // Also publish to warnings if status === 'warning'
     if (event.status === 'warning') {
       await producer.send({
-        topic: 'mars.events.warnings',
+        topic: 'mars.common-data-records-warnings',
         messages: [{ value: JSON.stringify(event) }],
       });
     }
