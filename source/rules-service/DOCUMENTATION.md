@@ -2,7 +2,11 @@
 
 > **Service**: `rules-service` (Student B)
 > **Port**: `4000` | **Stack**: Node.js, Express, sql.js (SQLite), KafkaJS, ws
+<<<<<<< HEAD
 > **Swagger UI**: `http://localhost:4000/docs` | **OpenAPI JSON**: `http://localhost:4000/openapi.json`
+=======
+> **Swagger UI**: `http://rules-service:4000/docs` | **OpenAPI JSON**: `http://rules-service:4000/openapi.json`
+>>>>>>> origin/network
 
 ---
 
@@ -145,7 +149,11 @@ Two separate consumer groups ensure the normalized consumer and warning consumer
 
 ## 3. REST API Reference
 
+<<<<<<< HEAD
 **Base URL**: `http://localhost:4000`
+=======
+**Base URL**: `http://rules-service:4000`
+>>>>>>> origin/network
 
 ### 3.1 System Endpoints
 
@@ -433,7 +441,11 @@ Cached readings for a specific sensor. Supports telemetry IDs with `/` (e.g. `ma
 
 ## 4. WebSocket Protocol
 
+<<<<<<< HEAD
 **URL**: `ws://localhost:4000`
+=======
+**URL**: `ws://rules-service:4000`
+>>>>>>> origin/network
 
 ### Connection
 
@@ -596,8 +608,13 @@ All values loaded from `.env` via `dotenv`. See `.env.example`:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PORT` | `4000` | HTTP + WS server port |
+<<<<<<< HEAD
 | `KAFKA_BROKER` | `localhost:29092` | Kafka bootstrap server |
 | `SIMULATOR_URL` | `http://localhost:8080` | Mars IoT Simulator base URL |
+=======
+| `KAFKA_BROKER` | `kafka:9092` | Kafka bootstrap server |
+| `SIMULATOR_URL` | `http://simulator:8080` | Mars IoT Simulator base URL |
+>>>>>>> origin/network
 | `DB_PATH` | `./data/rules.db` | SQLite file location |
 | `KAFKA_TOPIC_NORMALIZED` | `mars.events.normalized` | Normalized events topic |
 | `KAFKA_TOPIC_WARNINGS` | `mars.events.warnings` | Warning events topic |
@@ -658,7 +675,11 @@ docker compose -f docker-compose.dev.yml up -d
 
 # 2. Wait for Kafka to be ready (~15-20s)
 # Check: http://localhost:8090 (Kafka UI)
+<<<<<<< HEAD
 # Check: http://localhost:8080/health (Simulator)
+=======
+# Check: http://simulator:8080/health (Simulator)
+>>>>>>> origin/network
 
 # 3. Install dependencies & start
 npm install
@@ -672,14 +693,22 @@ npm run mock
 
 ```bash
 # Health check
+<<<<<<< HEAD
 curl http://localhost:4000/health
 
 # Create a rule
 curl -X POST http://localhost:4000/rules \
+=======
+curl http://rules-service:4000/health
+
+# Create a rule
+curl -X POST http://rules-service:4000/rules \
+>>>>>>> origin/network
   -H "Content-Type: application/json" \
   -d '{"sensor_id":"greenhouse_temperature","metric":"temperature","operator":">","threshold":28,"unit":"°C","actuator":"cooling_fan","target_state":"ON"}'
 
 # List rules
+<<<<<<< HEAD
 curl http://localhost:4000/rules
 
 # Check actuator states
@@ -693,6 +722,21 @@ curl http://localhost:4000/sensors/latest
 
 # Open Swagger UI
 # → http://localhost:4000/docs
+=======
+curl http://rules-service:4000/rules
+
+# Check actuator states
+curl http://rules-service:4000/actuators
+
+# Check audit log
+curl http://rules-service:4000/actuators/logs
+
+# Check sensor cache
+curl http://rules-service:4000/sensors/latest
+
+# Open Swagger UI
+# → http://rules-service:4000/docs
+>>>>>>> origin/network
 ```
 
 ### Docker Production Build
