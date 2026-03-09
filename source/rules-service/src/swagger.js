@@ -1,8 +1,5 @@
 const swaggerJsdoc = require('swagger-jsdoc');
-<<<<<<< HEAD
-=======
 const config = require('./config');
->>>>>>> origin/network
 
 const options = {
   definition: {
@@ -17,11 +14,7 @@ const options = {
       contact: { name: 'Student B' },
     },
     servers: [
-<<<<<<< HEAD
-      { url: 'http://localhost:4000', description: 'Local development' },
-=======
       { url: config.RULES_SERVICE_BASE_URL, description: 'Local development' },
->>>>>>> origin/network
     ],
     tags: [
       { name: 'Rules',     description: 'CRUD for IF/THEN automation rules' },
