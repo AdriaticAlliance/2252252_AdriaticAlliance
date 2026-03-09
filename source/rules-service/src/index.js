@@ -112,8 +112,8 @@ async function main() {
   // 3. Start HTTP + WS server
   server.listen(config.PORT, () => {
     console.log(`[rules-service] HTTP + WS listening on port ${config.PORT}`);
-    console.log(`[rules-service] Swagger UI: http://rules-service:${config.PORT}/docs`);
-    console.log(`[rules-service] OpenAPI JSON: http://rules-service:${config.PORT}/openapi.json`);
+    console.log(`[rules-service] Swagger UI: ${config.RULES_SERVICE_BASE_URL}/docs`);
+    console.log(`[rules-service] OpenAPI JSON: ${config.RULES_SERVICE_BASE_URL}/openapi.json`);
     console.log(`[rules-service] Simulator target: ${config.SIMULATOR_URL}`);
   });
 }

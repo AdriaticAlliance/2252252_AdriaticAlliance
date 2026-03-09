@@ -657,7 +657,7 @@ backend/
 docker compose -f docker-compose.dev.yml up -d
 
 # 2. Wait for Kafka to be ready (~15-20s)
-# Check: http://kafka-ui:8080 (Kafka UI)
+# Check: http://localhost:8090 (Kafka UI)
 # Check: http://simulator:8080/health (Simulator)
 
 # 3. Install dependencies & start

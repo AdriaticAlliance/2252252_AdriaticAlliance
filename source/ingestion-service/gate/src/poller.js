@@ -1,4 +1,5 @@
 const fetch = require('node-fetch');
+const config = require('./config');
 
 const REST_SENSORS = [
   'greenhouse_temperature', 'entrance_humidity', 'co2_hall',
@@ -6,13 +7,11 @@ const REST_SENSORS = [
   'air_quality_pm25',       'air_quality_voc',
 ];
 
-const PORT = process.env.PORT || 3001;
-
 // Call the Gate's own REST endpoint (keeps the architecture intact)
 async function triggerPoll(sensorName) {
   try {
     const res = await fetch(
-      `http://ingestion-gate:${PORT}/sensors/${encodeURIComponent(sensorName)}`
+      `${config.GATE_BASE_URL}/sensors/${encodeURIComponent(sensorName)}`
     );
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
   } catch (err) {

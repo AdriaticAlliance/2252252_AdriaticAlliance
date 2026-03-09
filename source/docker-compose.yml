@@ -46,11 +46,21 @@ services:
       # Simulator configuration
       # By default, talk to the simulator container at http://simulator:8080.
       # Override this if the simulator is running on the host.
+      - SIMULATOR_HOST=simulator
+      - SIMULATOR_PORT=8080
       - SIMULATOR_BASE_URL=http://simulator:8080
 
       # Kafka connectivity (gate produces interpret_* and consumes poll_sensor_*).
+      - KAFKA_HOST=kafka
+      - KAFKA_PORT=9092
       - KAFKA_BROKER=kafka:9092
       - KAFKA_CLIENT_ID=mars-gate
+      
+      # Ingestion service configuration
+      - INGESTION_GATE_HOST=ingestion-gate
+      - INGESTION_GATE_PORT=3001
+      - INGESTION_INTERPRETER_HOST=ingestion-interpreter
+      - INGESTION_INTERPRETER_PORT=3002
 
       # Optional polling configuration and telemetry topics.
       - SENSOR_POLL_INTERVAL_MS=5000
@@ -74,8 +84,14 @@ services:
       - NODE_ENV=production
 
       # Kafka connectivity
+      - KAFKA_HOST=kafka
+      - KAFKA_PORT=9092
       - KAFKA_BROKER=kafka:9092
       - KAFKA_CLIENT_ID=mars-interpreter
+      
+      # Ingestion service configuration
+      - INGESTION_INTERPRETER_HOST=ingestion-interpreter
+      - INGESTION_INTERPRETER_PORT=3002
 
       # Topics consumed from the gate and produced for downstream services.
       - KAFKA_TOPIC_SENSORS_RAW=simulator.sensors.raw
@@ -105,8 +121,14 @@ services:
     environment:
       - NODE_ENV=production
       - DB_PATH=data/database.sqlite
+      - KAFKA_HOST=kafka
+      - KAFKA_PORT=9092
       - KAFKA_BROKER=kafka:9092
+      - SIMULATOR_HOST=simulator
+      - SIMULATOR_PORT=8080
       - SIMULATOR_URL=http://simulator:8080
+      - RULES_SERVICE_HOST=rules-service
+      - RULES_SERVICE_PORT=4000
       - PORT=4000
     ports:
       - "4000:4000"
