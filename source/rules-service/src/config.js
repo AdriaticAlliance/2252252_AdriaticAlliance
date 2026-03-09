@@ -2,8 +2,8 @@ require('dotenv').config();
 
 module.exports = {
   PORT:                    parseInt(process.env.PORT || '4000'),
-  KAFKA_BROKER:            process.env.KAFKA_BROKER || 'localhost:9092',
-  SIMULATOR_URL:           process.env.SIMULATOR_URL || 'http://localhost:8080',
+  KAFKA_BROKER:            process.env.KAFKA_BROKER || 'kafka:9092',
+  SIMULATOR_URL:           process.env.SIMULATOR_URL || 'http://simulator:8080',
   DB_PATH:                 process.env.DB_PATH || './data/rules.db',
   KAFKA_TOPIC_NORMALIZED:  process.env.KAFKA_TOPIC_NORMALIZED || 'mars.common-data-records',
   KAFKA_TOPIC_WARNINGS:    process.env.KAFKA_TOPIC_WARNINGS   || 'mars.common-data-records-warnings',

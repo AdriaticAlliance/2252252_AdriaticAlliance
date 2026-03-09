@@ -1,7 +1,7 @@
 require('dotenv').config();
 const { Kafka } = require('kafkajs');
 
-const kafka    = new Kafka({ clientId: 'mock-producer', brokers: [process.env.KAFKA_BROKER || 'localhost:9092'] });
+const kafka    = new Kafka({ clientId: 'mock-producer', brokers: [process.env.KAFKA_BROKER || 'kafka:9092'] });
 const producer = kafka.producer();
 
 // These match the normalized event schema Student A will produce.

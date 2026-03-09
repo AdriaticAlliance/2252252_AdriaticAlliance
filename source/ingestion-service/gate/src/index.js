@@ -13,7 +13,7 @@ const WebSocket = require('ws');
 const { Kafka } = require('kafkajs');
 const { startAutoPolling } = require('./poller');
 
-const SIMULATOR_BASE_URL = process.env.SIMULATOR_BASE_URL || 'http://localhost:8080';
+const SIMULATOR_BASE_URL = process.env.SIMULATOR_BASE_URL || 'http://simulator:8080';
 const TELEMETRY_TOPICS = (process.env.TELEMETRY_TOPICS || '').split(',').map(t => t.trim()).filter(Boolean);
 const KAFKA_BROKER = process.env.KAFKA_BROKER || 'kafka:9092';
 const KAFKA_CLIENT_ID = process.env.KAFKA_CLIENT_ID || 'mars-gate';

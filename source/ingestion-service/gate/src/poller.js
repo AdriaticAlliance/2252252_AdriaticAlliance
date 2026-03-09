@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 3001;
 async function triggerPoll(sensorName) {
   try {
     const res = await fetch(
-      `http://localhost:${PORT}/sensors/${encodeURIComponent(sensorName)}`
+      `http://ingestion-gate:${PORT}/sensors/${encodeURIComponent(sensorName)}`
     );
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
   } catch (err) {

@@ -13,7 +13,7 @@ const options = {
       contact: { name: 'Student B' },
     },
     servers: [
-      { url: 'http://localhost:4000', description: 'Local development' },
+      { url: 'http://rules-service:4000', description: 'Local development' },
     ],
     tags: [
       { name: 'Rules',     description: 'CRUD for IF/THEN automation rules' },
