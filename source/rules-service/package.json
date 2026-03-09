@@ -1,0 +1,25 @@
+{
+  "name": "rules-service",
+  "version": "1.0.0",
+  "description": "Mars IoT Platform — Rules Service & Backend API",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "mock": "node tools/mockProducer.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "kafkajs": "^2.2.4",
+    "node-fetch": "^2.7.0",
+    "sql.js": "^1.11.0",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
+}

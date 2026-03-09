@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mars-operations.local/schemas/common-sensor-telemetry-format.json",
+  "title": "Common format for sensor and telemetry records",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "sensor_id": {
+      "type": "string",
+      "description": "e.g. \"greenhouse_temperature\", \"mars/telemetry/solar_array\""
+    },
+    "source_type": {
+      "type": "string",
+      "enum": ["rest", "telemetry"]
+    },
+    "metric": {
+      "type": "string",
+      "description": "e.g. \"temperature\", \"power_kw\", \"pm25_ug_m3\""
+    },
+    "value": {
+      "type": "number"
+    },
+    "unit": {
+      "type": "string",
+      "description": "e.g. \"°C\", \"kW\", \"µg/m³\""
+    },
+    "status": {
+      "type": "string",
+      "enum": ["ok", "warning", "unknown"]
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601, e.g. \"2036-03-05T14:32:00Z\""
+    },
+    "raw": {
+      "type": "object",
+      "description": "Original payload preserved for debugging"
+    }
+  },
+  "required": [
+    "sensor_id",
+    "source_type",
+    "metric",
+    "value",
+    "unit",
+    "status",
+    "timestamp",
+    "raw"
+  ]
+}
+
