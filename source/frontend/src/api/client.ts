@@ -1,80 +1,59 @@
-import type { Actuator, Rule, RuleInput, SensorReading } from '../types';
-import { initialActuators, initialRules, initialSensors } from '../mock/data';
+import axios from 'axios';
 
-// Add this declaration so TypeScript recognizes import.meta.env
-interface ImportMetaEnv {
-  readonly VITE_STATE_API_URL?: string;
-  readonly VITE_RULES_API_URL?: string;
-  readonly VITE_USE_MOCK?: string;
-}
+const BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
-interface ImportMeta {
-  readonly env: ImportMetaEnv;
-}
+export const http = axios.create({ baseURL: BASE });
 
-const STATE_API_URL = import.meta.env.VITE_STATE_API_URL || 'http://localhost:8000';
-const RULES_API_URL = import.meta.env.VITE_RULES_API_URL || 'http://localhost:8001';
-const USE_MOCK = true
 
-async function requestJson<T>(url: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    },
-    ...options,
-  });
+// GET /sensors/latest → { data: NormalizedEvent[], count: number }
+export const getSensorsLatest = () =>
+  http.get('/sensors/latest').then(r => r.data);
 
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`HTTP ${response.status}: ${text}`);
-  }
+// GET /sensors/latest/{sensorId} → { data: NormalizedEvent[], count: number }
+export const getSensorById = (sensorId: string) =>
+  http.get(`/sensors/latest/${encodeURIComponent(sensorId)}`).then(r => r.data);
 
-  if (response.status === 204) return null as T;
-  return response.json() as Promise<T>;
-}
 
-export const api = {
-  async getState(): Promise<SensorReading[]> {
-    if (USE_MOCK){console.log(USE_MOCK); return initialSensors};
-    return requestJson<SensorReading[]>(`${STATE_API_URL}/state`);
-  },
-async getActuators(): Promise<Actuator[]> {
-  if (USE_MOCK) return initialActuators;
-  try {
-    console.log(`Fetching actuators from: ${RULES_API_URL}/actuators`);
-    const result = await requestJson<Actuator[]>(`${RULES_API_URL}/actuators`);
-    console.log('Actuators loaded:', result);
-    return result;
-  } catch (error) {
-    console.error('Failed to load actuators:', error);
-    console.log(import.meta.env.VITE_USE_MOCK)
-    throw error;
-  }
-},
-async getRules(): Promise<Rule[]> {
-    if (USE_MOCK) return initialRules;
-    return requestJson<Rule[]>(`${RULES_API_URL}/rules`);
-  },
-  async createRule(rule: RuleInput): Promise<Rule> {
-    if (USE_MOCK) throw new Error('Mock mode');
-    return requestJson<Rule>(`${RULES_API_URL}/rules`, { method: 'POST', body: JSON.stringify(rule) });
-  },
-  async toggleRule(ruleId: string | number): Promise<void> {
-    if (USE_MOCK) throw new Error('Mock mode');
-    await requestJson<void>(`${RULES_API_URL}/rules/${ruleId}/toggle`, { method: 'PATCH' });
-  },
-  async deleteRule(ruleId: string | number): Promise<void> {
-    if (USE_MOCK) throw new Error('Mock mode');
-    await requestJson<void>(`${RULES_API_URL}/rules/${ruleId}`, { method: 'DELETE' });
-  },
-  subscribeToState(onMessage: (payload: SensorReading | SensorReading[]) => void): (() => void) | null {
-    if (USE_MOCK) return null;
-    const eventSource = new EventSource(`${STATE_API_URL}/state/stream`);
-    eventSource.onmessage = (event: MessageEvent<string>) => {
-      onMessage(JSON.parse(event.data) as SensorReading | SensorReading[]);
-    };
-    eventSource.onerror = () => eventSource.close();
-    return () => eventSource.close();
-  },
-};
+// GET /rules → { data: Rule[], count: number }
+export const getRules = () =>
+  http.get('/rules').then(r => r.data);
+
+// GET /rules/{id} → Rule
+export const getRuleById = (id: string | number) =>
+  http.get(`/rules/${id}`).then(r => r.data);
+
+// POST /rules → Rule (201)
+export const createRule = (body: any) =>
+  http.post('/rules', body).then(r => r.data);
+
+// PUT /rules/{id} → Rule
+export const updateRule = (id: string | number, body: any) =>
+  http.put(`/rules/${id}`, body).then(r => r.data);
+
+
+// pass { enabled: true/false } to set explicitly, or no body to flip
+export const toggleRule = (id: string | number, enabled?: boolean) =>
+  http.patch(`/rules/${id}/toggle`, enabled !== undefined ? { enabled } : undefined)
+    .then(r => r.data);
+
+// DELETE /rules/{id} → 204
+export const deleteRule = (id: string | number) =>
+  http.delete(`/rules/${id}`);
+
+
+// GET /actuators → { actuators: { cooling_fan: "ON", ... } }
+export const getActuators = () =>
+  http.get('/actuators').then(r => r.data);
+
+// POST /actuators/{name} → ActuatorResponse
+export const setActuator = (name: string, state: string) =>
+  http.post(`/actuators/${name}`, { state }).then(r => r.data);
+
+// GET /actuators/logs?limit=100&offset=0 → { data: ActuatorLog[], count, limit, offset }
+export const getAuditLog = (limit = 100, offset = 0) =>
+  http.get('/actuators/logs', { params: { limit, offset } }).then(r => r.data);
+
+
+// GET /meta → { known_sensors[], known_actuators[], valid_operators[] }
+export const getMeta = () =>
+  http.get('/meta').then(r => r.data);
