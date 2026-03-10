@@ -1,8 +1,5 @@
 const fetch = require('node-fetch');
-<<<<<<< HEAD
-=======
 const config = require('./config');
->>>>>>> origin/network
 
 const REST_SENSORS = [
   'greenhouse_temperature', 'entrance_humidity', 'co2_hall',
@@ -10,20 +7,11 @@ const REST_SENSORS = [
   'air_quality_pm25',       'air_quality_voc',
 ];
 
-<<<<<<< HEAD
-const PORT = process.env.PORT || 3001;
-
-=======
->>>>>>> origin/network
 // Call the Gate's own REST endpoint (keeps the architecture intact)
 async function triggerPoll(sensorName) {
   try {
     const res = await fetch(
-<<<<<<< HEAD
-      `http://localhost:${PORT}/sensors/${encodeURIComponent(sensorName)}`
-=======
       `${config.GATE_BASE_URL}/sensors/${encodeURIComponent(sensorName)}`
->>>>>>> origin/network
     );
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
   } catch (err) {
