@@ -1,0 +1,248 @@
+commit 7c07dba7a8adf8cd1ed2a4c9e45479ee7bf84fed
+Author: Nick Petertails <nick_petertails@yahoo.com>
+Date:   Mon Mar 9 19:21:47 2026 +0100
+
+    Employ environment variables rather than container names
+
+diff --git a/source/docker-compose.yml b/source/docker-compose.yml
+index 6825019..4c14cdf 100644
+--- a/source/docker-compose.yml
++++ b/source/docker-compose.yml
+@@ -46,11 +46,21 @@ services:
+       # Simulator configuration
+       # By default, talk to the simulator container at http://simulator:8080.
+       # Override this if the simulator is running on the host.
++      - SIMULATOR_HOST=simulator
++      - SIMULATOR_PORT=8080
+       - SIMULATOR_BASE_URL=http://simulator:8080
+ 
+       # Kafka connectivity (gate produces interpret_* and consumes poll_sensor_*).
++      - KAFKA_HOST=kafka
++      - KAFKA_PORT=9092
+       - KAFKA_BROKER=kafka:9092
+       - KAFKA_CLIENT_ID=mars-gate
++      
++      # Ingestion service configuration
++      - INGESTION_GATE_HOST=ingestion-gate
++      - INGESTION_GATE_PORT=3001
++      - INGESTION_INTERPRETER_HOST=ingestion-interpreter
++      - INGESTION_INTERPRETER_PORT=3002
+ 
+       # Optional polling configuration and telemetry topics.
+       - SENSOR_POLL_INTERVAL_MS=5000
+@@ -74,8 +84,14 @@ services:
+       - NODE_ENV=production
+ 
+       # Kafka connectivity
++      - KAFKA_HOST=kafka
++      - KAFKA_PORT=9092
+       - KAFKA_BROKER=kafka:9092
+       - KAFKA_CLIENT_ID=mars-interpreter
++      
++      # Ingestion service configuration
++      - INGESTION_INTERPRETER_HOST=ingestion-interpreter
++      - INGESTION_INTERPRETER_PORT=3002
+ 
+       # Topics consumed from the gate and produced for downstream services.
+       - KAFKA_TOPIC_SENSORS_RAW=simulator.sensors.raw
+@@ -105,8 +121,14 @@ services:
+     environment:
+       - NODE_ENV=production
+       - DB_PATH=data/database.sqlite
++      - KAFKA_HOST=kafka
++      - KAFKA_PORT=9092
+       - KAFKA_BROKER=kafka:9092
++      - SIMULATOR_HOST=simulator
++      - SIMULATOR_PORT=8080
+       - SIMULATOR_URL=http://simulator:8080
++      - RULES_SERVICE_HOST=rules-service
++      - RULES_SERVICE_PORT=4000
+       - PORT=4000
+     ports:
+       - "4000:4000"
+diff --git a/source/ingestion-service/gate/src/config.js b/source/ingestion-service/gate/src/config.js
+index cd09487..d2c2954 100644
+--- a/source/ingestion-service/gate/src/config.js
++++ b/source/ingestion-service/gate/src/config.js
+@@ -1,8 +1,16 @@
+ require('dotenv').config();
+ 
++const SIMULATOR_HOST = process.env.SIMULATOR_HOST || 'simulator';
++const SIMULATOR_PORT = process.env.SIMULATOR_PORT || '8080';
++const INGESTION_INTERPRETER_HOST = process.env.INGESTION_INTERPRETER_HOST || 'ingestion-interpreter';
++const INGESTION_INTERPRETER_PORT = process.env.INGESTION_INTERPRETER_PORT || '3002';
++const INGESTION_GATE_HOST = process.env.INGESTION_GATE_HOST || 'ingestion-gate';
++const INGESTION_GATE_PORT = process.env.INGESTION_GATE_PORT || '3001';
++
+ module.exports = {
+-  SIMULATOR_URL:    process.env.SIMULATOR_URL    || 'http://simulator:8080',
+-  INTERPRETER_URL:  process.env.INTERPRETER_URL  || 'http://ingestion-interpreter:3002',
++  SIMULATOR_URL:    process.env.SIMULATOR_URL    || `http://${SIMULATOR_HOST}:${SIMULATOR_PORT}`,
++  INTERPRETER_URL:  process.env.INTERPRETER_URL  || `http://${INGESTION_INTERPRETER_HOST}:${INGESTION_INTERPRETER_PORT}`,
++  GATE_BASE_URL:    process.env.GATE_BASE_URL    || `http://${INGESTION_GATE_HOST}:${INGESTION_GATE_PORT}`,
+   POLL_INTERVAL_MS: parseInt(process.env.POLL_INTERVAL_MS || '5000'),
+   PORT: 3001,
+ 
+diff --git a/source/ingestion-service/gate/src/index.js b/source/ingestion-service/gate/src/index.js
+index 5d561d0..fa91e4b 100644
+--- a/source/ingestion-service/gate/src/index.js
++++ b/source/ingestion-service/gate/src/index.js
+@@ -13,9 +13,13 @@ const WebSocket = require('ws');
+ const { Kafka } = require('kafkajs');
+ const { startAutoPolling } = require('./poller');
+ 
+-const SIMULATOR_BASE_URL = process.env.SIMULATOR_BASE_URL || 'http://simulator:8080';
++const SIMULATOR_HOST = process.env.SIMULATOR_HOST || 'simulator';
++const SIMULATOR_PORT = process.env.SIMULATOR_PORT || '8080';
++const SIMULATOR_BASE_URL = process.env.SIMULATOR_BASE_URL || `http://${SIMULATOR_HOST}:${SIMULATOR_PORT}`;
+ const TELEMETRY_TOPICS = (process.env.TELEMETRY_TOPICS || '').split(',').map(t => t.trim()).filter(Boolean);
+-const KAFKA_BROKER = process.env.KAFKA_BROKER || 'kafka:9092';
++const KAFKA_HOST = process.env.KAFKA_HOST || 'kafka';
++const KAFKA_PORT = process.env.KAFKA_PORT || '9092';
++const KAFKA_BROKER = process.env.KAFKA_BROKER || `${KAFKA_HOST}:${KAFKA_PORT}`;
+ const KAFKA_CLIENT_ID = process.env.KAFKA_CLIENT_ID || 'mars-gate';
+ 
+ const app = express();
+diff --git a/source/ingestion-service/gate/src/poller.js b/source/ingestion-service/gate/src/poller.js
+index b4efd39..523282f 100644
+--- a/source/ingestion-service/gate/src/poller.js
++++ b/source/ingestion-service/gate/src/poller.js
+@@ -1,4 +1,5 @@
+ const fetch = require('node-fetch');
++const config = require('./config');
+ 
+ const REST_SENSORS = [
+   'greenhouse_temperature', 'entrance_humidity', 'co2_hall',
+@@ -6,13 +7,11 @@ const REST_SENSORS = [
+   'air_quality_pm25',       'air_quality_voc',
+ ];
+ 
+-const PORT = process.env.PORT || 3001;
+-
+ // Call the Gate's own REST endpoint (keeps the architecture intact)
+ async function triggerPoll(sensorName) {
+   try {
+     const res = await fetch(
+-      `http://ingestion-gate:${PORT}/sensors/${encodeURIComponent(sensorName)}`
++      `${config.GATE_BASE_URL}/sensors/${encodeURIComponent(sensorName)}`
+     );
+     if (!res.ok) throw new Error(`HTTP ${res.status}`);
+   } catch (err) {
+diff --git a/source/ingestion-service/interpreter/src/config.js b/source/ingestion-service/interpreter/src/config.js
+index b17a25b..1056ae1 100644
+--- a/source/ingestion-service/interpreter/src/config.js
++++ b/source/ingestion-service/interpreter/src/config.js
+@@ -1,8 +1,11 @@
+ require('dotenv').config();
+ 
++const KAFKA_HOST = process.env.KAFKA_HOST || 'kafka';
++const KAFKA_PORT = process.env.KAFKA_PORT || '9092';
++
+ module.exports = {
+   PORT:         parseInt(process.env.PORT || '3002'),
+-  KAFKA_BROKER: process.env.KAFKA_BROKER || 'kafka:9092',
++  KAFKA_BROKER: process.env.KAFKA_BROKER || `${KAFKA_HOST}:${KAFKA_PORT}`,
+   KAFKA_TOPIC:  process.env.KAFKA_TOPIC  || 'mars.common-data-records',
+ 
+   // Maps sensor_id ??? normalizer family
+diff --git a/source/ingestion-service/interpreter/src/index.js b/source/ingestion-service/interpreter/src/index.js
+index aab9998..4dfbdec 100644
+--- a/source/ingestion-service/interpreter/src/index.js
++++ b/source/ingestion-service/interpreter/src/index.js
+@@ -50,7 +50,9 @@ app.post('/ingest', async (req, res) => {
+   }
+ });
+ 
+-const KAFKA_BROKER = process.env.KAFKA_BROKER || 'kafka:9092';
++const KAFKA_HOST = process.env.KAFKA_HOST || 'kafka';
++const KAFKA_PORT = process.env.KAFKA_PORT || '9092';
++const KAFKA_BROKER = process.env.KAFKA_BROKER || `${KAFKA_HOST}:${KAFKA_PORT}`;
+ const KAFKA_CLIENT_ID = process.env.KAFKA_CLIENT_ID || 'mars-interpreter';
+ const COMMON_SCHEMA_PATH =
+   process.env.COMMON_SCHEMA_PATH || path.join(__dirname, '../../../format.json');
+diff --git a/source/rules-service/DOCUMENTATION.md b/source/rules-service/DOCUMENTATION.md
+index a84adab..8d39f8e 100644
+--- a/source/rules-service/DOCUMENTATION.md
++++ b/source/rules-service/DOCUMENTATION.md
+@@ -657,7 +657,7 @@ backend/
+ docker compose -f docker-compose.dev.yml up -d
+ 
+ # 2. Wait for Kafka to be ready (~15-20s)
+-# Check: http://kafka-ui:8080 (Kafka UI)
++# Check: http://localhost:8090 (Kafka UI)
+ # Check: http://simulator:8080/health (Simulator)
+ 
+ # 3. Install dependencies & start
+diff --git a/source/rules-service/src/config.js b/source/rules-service/src/config.js
+index b5df5fa..14ed23c 100644
+--- a/source/rules-service/src/config.js
++++ b/source/rules-service/src/config.js
+@@ -1,9 +1,17 @@
+ require('dotenv').config();
+ 
++const SIMULATOR_HOST = process.env.SIMULATOR_HOST || 'simulator';
++const SIMULATOR_PORT = process.env.SIMULATOR_PORT || '8080';
++const RULES_SERVICE_HOST = process.env.RULES_SERVICE_HOST || 'rules-service';
++const RULES_SERVICE_PORT = process.env.RULES_SERVICE_PORT || '4000';
++const KAFKA_HOST = process.env.KAFKA_HOST || 'kafka';
++const KAFKA_PORT = process.env.KAFKA_PORT || '9092';
++
+ module.exports = {
+   PORT:                    parseInt(process.env.PORT || '4000'),
+-  KAFKA_BROKER:            process.env.KAFKA_BROKER || 'kafka:9092',
+-  SIMULATOR_URL:           process.env.SIMULATOR_URL || 'http://simulator:8080',
++  KAFKA_BROKER:            process.env.KAFKA_BROKER || `${KAFKA_HOST}:${KAFKA_PORT}`,
++  SIMULATOR_URL:           process.env.SIMULATOR_URL || `http://${SIMULATOR_HOST}:${SIMULATOR_PORT}`,
++  RULES_SERVICE_BASE_URL:  process.env.RULES_SERVICE_BASE_URL || `http://${RULES_SERVICE_HOST}:${RULES_SERVICE_PORT}`,
+   DB_PATH:                 process.env.DB_PATH || './data/rules.db',
+   KAFKA_TOPIC_NORMALIZED:  process.env.KAFKA_TOPIC_NORMALIZED || 'mars.common-data-records',
+   KAFKA_TOPIC_WARNINGS:    process.env.KAFKA_TOPIC_WARNINGS   || 'mars.common-data-records-warnings',
+diff --git a/source/rules-service/src/index.js b/source/rules-service/src/index.js
+index 568935e..13f019c 100644
+--- a/source/rules-service/src/index.js
++++ b/source/rules-service/src/index.js
+@@ -112,8 +112,8 @@ async function main() {
+   // 3. Start HTTP + WS server
+   server.listen(config.PORT, () => {
+     console.log(`[rules-service] HTTP + WS listening on port ${config.PORT}`);
+-    console.log(`[rules-service] Swagger UI: http://rules-service:${config.PORT}/docs`);
+-    console.log(`[rules-service] OpenAPI JSON: http://rules-service:${config.PORT}/openapi.json`);
++    console.log(`[rules-service] Swagger UI: ${config.RULES_SERVICE_BASE_URL}/docs`);
++    console.log(`[rules-service] OpenAPI JSON: ${config.RULES_SERVICE_BASE_URL}/openapi.json`);
+     console.log(`[rules-service] Simulator target: ${config.SIMULATOR_URL}`);
+   });
+ }
+diff --git a/source/rules-service/src/swagger.js b/source/rules-service/src/swagger.js
+index d69b5e1..2addc74 100644
+--- a/source/rules-service/src/swagger.js
++++ b/source/rules-service/src/swagger.js
+@@ -1,4 +1,5 @@
+ const swaggerJsdoc = require('swagger-jsdoc');
++const config = require('./config');
+ 
+ const options = {
+   definition: {
+@@ -13,7 +14,7 @@ const options = {
+       contact: { name: 'Student B' },
+     },
+     servers: [
+-      { url: 'http://rules-service:4000', description: 'Local development' },
++      { url: config.RULES_SERVICE_BASE_URL, description: 'Local development' },
+     ],
+     tags: [
+       { name: 'Rules',     description: 'CRUD for IF/THEN automation rules' },
+diff --git a/source/rules-service/tools/mockProducer.js b/source/rules-service/tools/mockProducer.js
+index 8b0b497..f13527c 100644
+--- a/source/rules-service/tools/mockProducer.js
++++ b/source/rules-service/tools/mockProducer.js
+@@ -1,7 +1,9 @@
+ require('dotenv').config();
+ const { Kafka } = require('kafkajs');
+ 
+-const kafka    = new Kafka({ clientId: 'mock-producer', brokers: [process.env.KAFKA_BROKER || 'kafka:9092'] });
++const KAFKA_HOST = process.env.KAFKA_HOST || 'kafka';
++const KAFKA_PORT = process.env.KAFKA_PORT || '9092';
++const kafka    = new Kafka({ clientId: 'mock-producer', brokers: [process.env.KAFKA_BROKER || `${KAFKA_HOST}:${KAFKA_PORT}`] });
+ const producer = kafka.producer();
+ 
+ // These match the normalized event schema Student A will produce.
