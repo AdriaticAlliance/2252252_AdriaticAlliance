@@ -132,8 +132,19 @@ services:
       - "4000:4000"
     volumes:
       - rules-data:/app/data
-      # Mount compiled frontend app so Express can serve it!
-      - ./frontend/dist:/app/public/dist:ro
+    networks:
+      - mars-net
+
+  # Frontend component: serves the compiled React app using Nginx
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: mars-frontend
+    depends_on:
+      - rules-service
+    ports:
+      - "3000:80"
     networks:
       - mars-net
 
