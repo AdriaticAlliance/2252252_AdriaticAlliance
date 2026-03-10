@@ -171,7 +171,7 @@ Connects to Kafka broker (mars.common-data-records topic, consumer). Connects to
 - SERVICE ARCHITECTURE:
   - kafka/consumer.js: Subscribes exclusively to `mars.common-data-records`, immediately passing deserialized JSON structs towards the evaluator and sensor caches dynamically.
   - engine/ruleEvaluator.js: The core functional engine parsing operator conditions (`>`, `<`, `=`). Controls duplicate execution throttling utilizing a Map (`lastTriggered`).
-  - state/sensorCache.js: Executes volatile writes caching the latest snapshot in a memory Map uniquely keyed by `sensor_id::metric`.
+  - state/sensorCache.js: Executes volatile writes caching a rolling history (up to 30 events) in a memory Map uniquely keyed by `sensor_id::metric`.
   - db/migrations.js: Creates exact schemas upon bootstrap utilizing `CREATE TABLE IF NOT EXISTS` executing directly within the sql.js Wasm binary context.
   - ws/wsServer.js: Defines the `broadcast()` array loop pushing stringified payloads dynamically downstream toward registered web clients.
   - routes/rules.js: Abstracts the CRUD definitions inserting, reading, or toggling rule boolean integers against the DB.
@@ -194,6 +194,7 @@ Connects to Kafka broker (mars.common-data-records topic, consumer). Connects to
 | POST | /actuators/:name | Performs a manual override toggle on a hardware component | US-14 |
 | GET | /sensors/latest | Returns the globally cached snapshot of every last metric | US-12 |
 | GET | /sensors/latest/:sensorId | Returns the cache snapshot specifically isolated to one device | US-13 |
+| GET | /sensors/history/:sensorId/:metric | Returns the historical cached readings for a specific sensor | US-13 |
 | GET | /docs | Renders Swagger UI documentation portal | - |
 | GET | /openapi.json | Exports the raw Swagger JSON schema | - |
 
@@ -222,7 +223,7 @@ US-05, US-06, US-07, US-08, US-11, US-12, US-13, US-14, US-15
 ### DESCRIPTION:
 Binds visual elements mapped directly to remote API data architectures in an interactive graphical layout.
 ### PERSISTENCE EVALUATION:
-No persistence. Stateless SPA. Sensor history is stored in React component state only (session-scoped).
+No persistence. Stateless SPA. Short-term sensor history (up to 30 points) is preloaded from the rules-service cache upon mount and dynamically appended in React component state.
 ### EXTERNAL SERVICES CONNECTIONS:
 Connects to rules-service REST API at http://rules-service:4000. Connects to rules-service WebSocket at ws://rules-service:4000. No connection to simulator or Kafka directly.
 
