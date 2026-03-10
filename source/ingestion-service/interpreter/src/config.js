@@ -1,17 +1,11 @@
 require('dotenv').config();
 
-<<<<<<< HEAD
-module.exports = {
-  PORT:         parseInt(process.env.PORT || '3002'),
-  KAFKA_BROKER: process.env.KAFKA_BROKER || 'kafka:9092',
-=======
 const KAFKA_HOST = process.env.KAFKA_HOST || 'kafka';
 const KAFKA_PORT = process.env.KAFKA_PORT || '9092';
 
 module.exports = {
   PORT:         parseInt(process.env.PORT || '3002'),
   KAFKA_BROKER: process.env.KAFKA_BROKER || `${KAFKA_HOST}:${KAFKA_PORT}`,
->>>>>>> origin/network
   KAFKA_TOPIC:  process.env.KAFKA_TOPIC  || 'mars.common-data-records',
 
   // Maps sensor_id → normalizer family

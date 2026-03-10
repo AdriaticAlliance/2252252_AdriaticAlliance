@@ -72,16 +72,9 @@ app.use('/rules',     rulesRouter);
 app.use('/actuators', actuatorsRouter);
 app.use('/sensors',   sensorsRouter);
 
-// ── Static Frontend ─────────────────────────────────────────────────────────────
-const path = require('path');
-app.use(express.static(path.join(__dirname, '../public/dist')));
-
-// 404 fallback for API, SPA fallback for frontend
+// ── 404 Fallback ──────────────────────────────────────────────────────────────
 app.use((req, res, next) => {
-  if (req.path.startsWith('/api/') || req.path.startsWith('/rules') || req.path.startsWith('/actuators') || req.path.startsWith('/sensors') || req.path.startsWith('/health') || req.path.startsWith('/meta') || req.path.startsWith('/docs')) {
-    return res.status(404).json({ error: `Route ${req.method} ${req.path} not found` });
-  }
-  res.sendFile(path.resolve(__dirname, '../public/dist/index.html'));
+  res.status(404).json({ error: `Route ${req.method} ${req.path} not found` });
 });
 
 // Global error handler
