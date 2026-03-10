@@ -37,6 +37,7 @@ services:
       context: ./ingestion-service/gate
       dockerfile: Dockerfile
     container_name: mars-ingestion-gate
+    privileged: true
     depends_on:
       - kafka
       - simulator
@@ -76,6 +77,7 @@ services:
       context: ./ingestion-service/interpreter
       dockerfile: Dockerfile
     container_name: mars-ingestion-interpreter
+    privileged: true
     depends_on:
       - kafka
     environment:
@@ -113,6 +115,7 @@ services:
       context: ./rules-service
       dockerfile: Dockerfile
     container_name: mars-rules-service
+    privileged: true
     depends_on:
       - kafka
       - simulator
@@ -141,6 +144,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: mars-frontend
+    privileged: true
     depends_on:
       - rules-service
     ports:
