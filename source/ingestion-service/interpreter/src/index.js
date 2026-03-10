@@ -50,7 +50,9 @@ app.post('/ingest', async (req, res) => {
   }
 });
 
-const KAFKA_BROKER = process.env.KAFKA_BROKER || 'kafka:9092';
+const KAFKA_HOST = process.env.KAFKA_HOST || 'kafka';
+const KAFKA_PORT = process.env.KAFKA_PORT || '9092';
+const KAFKA_BROKER = process.env.KAFKA_BROKER || `${KAFKA_HOST}:${KAFKA_PORT}`;
 const KAFKA_CLIENT_ID = process.env.KAFKA_CLIENT_ID || 'mars-interpreter';
 const COMMON_SCHEMA_PATH =
   process.env.COMMON_SCHEMA_PATH || path.join(__dirname, '../../../format.json');

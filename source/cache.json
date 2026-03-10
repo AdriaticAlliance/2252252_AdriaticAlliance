@@ -1,0 +1,77 @@
+{
+  "data": [
+    {
+      "sensor_id": "greenhouse_temperature",
+      "source_type": "sensor",
+      "metric": "temperature_c",
+      "value": 24.24,
+      "unit": "C",
+      "status": "ok",
+      "timestamp": "2026-03-08T22:16:30.312052+00:00",
+      "raw": {
+        "sensor_id": "greenhouse_temperature",
+        "captured_at": "2026-03-08T22:16:30.312052+00:00",
+        "metric": "temperature_c",
+        "value": 24.24,
+        "unit": "C",
+        "status": "ok"
+      },
+      "cached_at": "2026-03-08T22:16:30.357Z"
+    },
+    {
+      "sensor_id": "air_quality_pm25",
+      "source_type": "sensor",
+      "metric": "pm1",
+      "value": 9.6,
+      "unit": "µg/m³",
+      "status": "ok",
+      "timestamp": "2026-03-08T22:17:30.122817+00:00",
+      "raw": {
+        "sensor_id": "air_quality_pm25",
+        "captured_at": "2026-03-08T22:17:30.122817+00:00",
+        "pm1_ug_m3": 9.6,
+        "pm25_ug_m3": 13.62,
+        "pm10_ug_m3": 19.42,
+        "status": "ok"
+      },
+      "cached_at": "2026-03-08T22:17:30.139Z"
+    },
+    {
+      "sensor_id": "air_quality_pm25",
+      "source_type": "sensor",
+      "metric": "pm25",
+      "value": 13.62,
+      "unit": "µg/m³",
+      "status": "ok",
+      "timestamp": "2026-03-08T22:17:30.122817+00:00",
+      "raw": {
+        "sensor_id": "air_quality_pm25",
+        "captured_at": "2026-03-08T22:17:30.122817+00:00",
+        "pm1_ug_m3": 9.6,
+        "pm25_ug_m3": 13.62,
+        "pm10_ug_m3": 19.42,
+        "status": "ok"
+      },
+      "cached_at": "2026-03-08T22:17:30.141Z"
+    },
+    {
+      "sensor_id": "air_quality_pm25",
+      "source_type": "sensor",
+      "metric": "pm10",
+      "value": 19.42,
+      "unit": "µg/m³",
+      "status": "ok",
+      "timestamp": "2026-03-08T22:17:30.122817+00:00",
+      "raw": {
+        "sensor_id": "air_quality_pm25",
+        "captured_at": "2026-03-08T22:17:30.122817+00:00",
+        "pm1_ug_m3": 9.6,
+        "pm25_ug_m3": 13.62,
+        "pm10_ug_m3": 19.42,
+        "status": "ok"
+      },
+      "cached_at": "2026-03-08T22:17:30.141Z"
+    }
+  ],
+  "count": 4
+}

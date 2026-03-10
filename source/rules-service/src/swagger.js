@@ -1,4 +1,5 @@
 const swaggerJsdoc = require('swagger-jsdoc');
+const config = require('./config');
 
 const options = {
   definition: {
@@ -13,7 +14,7 @@ const options = {
       contact: { name: 'Student B' },
     },
     servers: [
-      { url: 'http://localhost:4000', description: 'Local development' },
+      { url: config.RULES_SERVICE_BASE_URL, description: 'Local development' },
     ],
     tags: [
       { name: 'Rules',     description: 'CRUD for IF/THEN automation rules' },
