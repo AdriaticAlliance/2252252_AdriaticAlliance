@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 require('dotenv').config();
-
-=======
->>>>>>> 55e4a569c7755da1d8329f89b780aba2491eaf3d
 const KAFKA_HOST = process.env.KAFKA_HOST || 'kafka';
 const KAFKA_PORT = process.env.KAFKA_PORT || '9092';
 

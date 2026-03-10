@@ -13,6 +13,10 @@ export const getSensorsLatest = () =>
 export const getSensorById = (sensorId: string) =>
   http.get(`/sensors/latest/${encodeURIComponent(sensorId)}`).then(r => r.data);
 
+// GET /sensors/history/{sensorId}/{metric} → { data: NormalizedEvent[], count: number }
+export const getSensorHistory = (sensorId: string, metric: string) =>
+  http.get(`/sensors/history/${encodeURIComponent(sensorId)}/${encodeURIComponent(metric)}`).then(r => r.data);
+
 
 // GET /rules → { data: Rule[], count: number }
 export const getRules = () =>

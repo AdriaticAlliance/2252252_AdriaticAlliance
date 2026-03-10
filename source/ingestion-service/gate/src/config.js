@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 require('dotenv').config();
-
-=======
->>>>>>> 55e4a569c7755da1d8329f89b780aba2491eaf3d
 const SIMULATOR_HOST = process.env.SIMULATOR_HOST || 'simulator';
 const SIMULATOR_PORT = process.env.SIMULATOR_PORT || '8080';
 const INGESTION_INTERPRETER_HOST = process.env.INGESTION_INTERPRETER_HOST || 'ingestion-interpreter';

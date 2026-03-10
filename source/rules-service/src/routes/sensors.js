@@ -52,4 +52,32 @@ router.get('/latest/:sensorId(*)', (req, res) => {
   res.json({ data, count: data.length });
 });
 
+/**
+ * @openapi
+ * /sensors/history/{sensorId}/{metric}:
+ *   get:
+ *     tags: [Sensors]
+ *     summary: Get historical cached readings for a specific sensor and metric
+ *     parameters:
+ *       - in: path
+ *         name: sensorId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: metric
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Array of historical metrics for the sensor
+ *       404:
+ *         description: No cached data for this sensor
+ */
+router.get('/history/:sensorId(*)/:metric(*)', (req, res) => {
+  const data = sensorService.getHistory(req.params.sensorId, req.params.metric);
+  res.json({ data, count: data.length });
+});
+
 module.exports = router;

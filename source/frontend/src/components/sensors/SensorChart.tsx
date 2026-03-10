@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { useWebSocket } from '../../hooks/useWebSocket';
+import { getSensorHistory } from '../../api/client';
 
 const MAX_POINTS = 30;
 
@@ -37,6 +38,21 @@ interface SensorChartProps {
 
 export default function SensorChart({ sensorId, metric, unit }: SensorChartProps) {
   const [data, setData] = useState<ChartDataPoint[]>([]);
+
+  useEffect(() => {
+    getSensorHistory(sensorId, metric)
+      .then(res => {
+        if (res?.data && res.data.length > 0) {
+          const historyPoints = res.data.map((event: any) => ({
+            time: new Date(event.timestamp).toLocaleTimeString(),
+            value: event.value,
+            unit: event.unit
+          }));
+          setData(historyPoints);
+        }
+      })
+      .catch(err => console.error("Failed to load history", err));
+  }, [sensorId, metric]);
 
   useWebSocket('sensor_update', (event: any) => {
     if (event.sensor_id !== sensorId || event.metric !== metric) return;
