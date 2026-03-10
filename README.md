@@ -1,1 +1,1 @@
-![Set Up Guide](./setup_guide.md)
+[include](File:setup_guide.md)
