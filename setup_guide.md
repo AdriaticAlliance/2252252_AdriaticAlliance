@@ -13,8 +13,8 @@ Before you begin, ensure you have the following installed on your machine:
 
 First, clone the project to your local machine:
 ```bash
-git clone https://github.com/AdriaticAlliance/AA
-cd AA/source
+git clone https://github.com/AdriaticAlliance/2252252_AdriaticAlliance
+cd 2252252_AdriaticAlliance/source
 ```
 
 ## 3. Load the Simulator Image
