@@ -1,4 +1,4 @@
-#Set Up Guide
+# Set Up Guide
 ## Mars IoT Platform - Quick Setup Guide
 
 This guide will walk you through the process of getting the Mars IoT Platform up and running locally from a fresh git clone.
